@@ -76,7 +76,10 @@ class Typing:
 
     async def __aenter__(self: TypingT) -> TypingT:
         self._channel = channel = await self.messageable._get_channel()
-        await channel._state.http.send_typing(channel.id)
+        try:
+            await channel._state.http.send_typing(channel.id)
+        except Exception:
+            pass
         return self.__enter__()
 
     async def __aexit__(self,
