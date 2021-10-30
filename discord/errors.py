@@ -149,6 +149,12 @@ class HTTPException(DiscordException):
         super().__init__(fmt.format(self.response, self.code, self.text))
 
 
+class IHateThe3SecondsTimeout(HTTPException):
+    """Exception that is raised when an expired interaction token is used"""
+    pass
+
+
+
 class Forbidden(HTTPException):
     """Exception that's raised for when status code 403 occurs.
 
