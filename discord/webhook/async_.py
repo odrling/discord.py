@@ -36,7 +36,7 @@ import weakref
 import aiohttp
 
 from .. import utils
-from ..errors import HTTPException, Forbidden, NotFound, DiscordServerError
+from ..errors import HTTPException, Forbidden, DiscordServerError, IHateThe3SecondsTimeout
 from ..message import Message
 from ..enums import try_enum, WebhookType
 from ..user import BaseUser, User
@@ -214,8 +214,8 @@ class AsyncWebhookAdapter:
 
                         if response.status == 403:
                             raise Forbidden(response, data)
-                        elif response.status == 404:
-                            raise NotFound(response, data)
+                        elif response.status in (401, 404):
+                            raise IHateThe3SecondsTimeout(response, data)
                         else:
                             raise HTTPException(response, data)
 
