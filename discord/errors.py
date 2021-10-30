@@ -163,6 +163,12 @@ class RateLimited(DiscordException):
         super().__init__(f'Too many requests. Retry in {retry_after:.2f} seconds.')
 
 
+class IHateThe3SecondsTimeout(HTTPException):
+    """Exception that is raised when an expired interaction token is used"""
+
+    pass
+
+
 class Forbidden(HTTPException):
     """Exception that's raised for when status code 403 occurs.
 
