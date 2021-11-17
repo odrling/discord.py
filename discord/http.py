@@ -1898,8 +1898,8 @@ class HTTPClient:
     def get_all_guild_events(self,
                              guild_id: Snowflake,
                              with_user_count: bool = False
-                            ) -> Response[List[guild_event.GuildEvent]]:
-        params: Dict[str, Any] = {'with_user_count': int(with_user_count)}
+                            ) -> Response[list[guild_event.GuildEvent]]:
+        params: dict[str, Any] = {'with_user_count': int(with_user_count)}
         r = Route('GET',
                   '/guilds/{guild_id}/scheduled-events',
                   guild_id=guild_id)
@@ -1946,7 +1946,7 @@ class HTTPClient:
             event_id: Snowflake,
             limit: int = 100,
             with_member: bool = False) -> Response[guild_event.GuildEventUsers]:
-        params: Dict[str, Any] = {
+        params: dict[str, Any] = {
             'limit': limit,
             'with_member': int(with_member)
         }

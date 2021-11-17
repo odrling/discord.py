@@ -887,10 +887,16 @@ class VocalGuildChannel(discord.abc.Connectable, discord.abc.GuildChannel, Hasha
         description: str | None = None,
         entity_metadata: GuildEventEntityMetadata | None = None
     ) -> GuildEvent:
-        return await self.guild.create_event(name, entity_type, privacy_level,
-                                             status, scheduled_start_time,
-                                             scheduled_end_time, description,
-                                             self.id, entity_metadata)
+        return await self.guild.create_event(
+            name,
+            entity_type,
+            privacy_level,
+            status,
+            scheduled_start_time,
+            scheduled_end_time=scheduled_end_time,
+            description=description,
+            channel_id=self.id,
+            entity_metadata=entity_metadata)
 
 
 
@@ -1065,11 +1071,14 @@ class VoiceChannel(VocalGuildChannel):
         description: str | None = None,
         entity_metadata: GuildEventEntityMetadata | None = None
     ) -> GuildEvent:
-        return await super().create_event(name, GuildEventEntityType.VOICE,
-                                          privacy_level, status,
+        return await super().create_event(name,
+                                          GuildEventEntityType.VOICE,
+                                          privacy_level,
+                                          status,
                                           scheduled_start_time,
-                                          scheduled_end_time, description,
-                                          self.id, entity_metadata)
+                                          scheduled_end_time=scheduled_end_time,
+                                          description=description,
+                                          entity_metadata=entity_metadata)
 
 
 class StageChannel(VocalGuildChannel):
@@ -1356,10 +1365,12 @@ class StageChannel(VocalGuildChannel):
     ) -> GuildEvent:
         return await super().create_event(name,
                                           GuildEventEntityType.STAGE_INSTANCE,
-                                          privacy_level, status,
+                                          privacy_level,
+                                          status,
                                           scheduled_start_time,
-                                          scheduled_end_time, description,
-                                          self.id, entity_metadata)
+                                          scheduled_end_time=scheduled_end_time,
+                                          description=description,
+                                          entity_metadata=entity_metadata)
 
 
 class CategoryChannel(discord.abc.GuildChannel, Hashable):

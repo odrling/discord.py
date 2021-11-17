@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Literal, Optional, TypedDict
+from typing import Literal, Optional, TypedDict
 
 from .channel import PrivacyLevel
 from .snowflake import Snowflake, SnowflakeList
@@ -34,4 +34,4 @@ class GuildEvent(TypedDict, total=False):
 
 
 class GuildEventUsers(TypedDict):
-    users: List[User]
+    users: list[User]
