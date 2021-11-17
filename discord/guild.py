@@ -25,6 +25,7 @@ DEALINGS IN THE SOFTWARE.
 from __future__ import annotations
 
 import copy
+from dataclasses import asdict
 import unicodedata
 from typing import (
     Any,
@@ -44,6 +45,7 @@ from typing import (
 
 from . import utils, abc
 from .role import Role
+from .guild_event import GuildEvent, GuildEventEntityMetadata, GuildEventEntityType, GuildEventStatus, PrivacyLevel
 from .member import Member, VoiceState
 from .emoji import Emoji
 from .errors import InvalidData
@@ -2942,3 +2944,53 @@ class Guild(Hashable):
         ws = self._state._get_websocket(self.id)
         channel_id = channel.id if channel else None
         await ws.voice_state(self.id, channel_id, self_mute, self_deaf)
+
+    async def fetch_all_events(self, with_user_count: bool = False) -> list[GuildEvent]:
+        """
+        Returns a list of guild scheduled event objects for the given guild.
+        """
+        result = await self._state.http.get_all_guild_events(self.id, with_user_count=with_user_count)
+        return [GuildEvent(state=self._state, data=data) for data in result]
+
+    async def fetch_event(self, event_id: int) -> GuildEvent:
+        """
+        Returns a list of guild scheduled event objects for the given guild.
+        """
+        result = await self._state.http.get_guild_event(self.id, event_id)
+        return GuildEvent(state=self._state, data=result)
+
+    async def create_event(
+        self,
+        name: str,
+        entity_type: GuildEventEntityType,
+        privacy_level: PrivacyLevel,
+        status: GuildEventStatus,
+        scheduled_start_time: datetime.datetime,
+        scheduled_end_time: datetime.datetime | None = None,
+        description: str | None = None,
+        channel_id: int | None = None,
+        entity_metadata: GuildEventEntityMetadata | None = None
+    ) -> GuildEvent:
+        """
+        Create a guild scheduled event in the guild.
+        Returns a guild scheduled event object on success.
+        """
+        data = {
+            'name': name,
+            'entity_type': entity_type.value,
+            'privacy_level': privacy_level.value,
+            'status': status.value,
+            'scheduled_start_time': scheduled_start_time.isoformat(),
+        }
+
+        if scheduled_end_time is not None:
+            data['scheduled_end_time'] = scheduled_end_time.isoformat()
+        if description is not None:
+            data['description'] = description
+        if channel_id is not None:
+            data['channel_id'] = channel_id
+        if entity_metadata is not None:
+            data['entity_metadata'] = asdict(entity_metadata)
+
+        result = await self._state.http.create_guild_event(self.id, data)
+        return GuildEvent(state=self._state, data=result)

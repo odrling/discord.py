@@ -44,6 +44,7 @@ from typing import (
 import datetime
 
 import discord.abc
+from .guild_event import GuildEvent, GuildEventEntityMetadata, GuildEventEntityType, GuildEventStatus, PrivacyLevel
 from .permissions import PermissionOverwrite, Permissions
 from .enums import ChannelType, StagePrivacyLevel, try_enum, VoiceRegion, VideoQualityMode
 from .mixins import Hashable
@@ -875,6 +876,23 @@ class VocalGuildChannel(discord.abc.Connectable, discord.abc.GuildChannel, Hasha
             base.value &= ~denied.value
         return base
 
+    async def create_event(
+        self,
+        name: str,
+        entity_type: GuildEventEntityType,
+        privacy_level: PrivacyLevel,
+        status: GuildEventStatus,
+        scheduled_start_time: datetime.datetime,
+        scheduled_end_time: datetime.datetime | None = None,
+        description: str | None = None,
+        entity_metadata: GuildEventEntityMetadata | None = None
+    ) -> GuildEvent:
+        return await self.guild.create_event(name, entity_type, privacy_level,
+                                             status, scheduled_start_time,
+                                             scheduled_end_time, description,
+                                             self.id, entity_metadata)
+
+
 
 class VoiceChannel(VocalGuildChannel):
     """Represents a Discord guild voice channel.
@@ -1036,6 +1054,22 @@ class VoiceChannel(VocalGuildChannel):
         if payload is not None:
             # the payload will always be the proper channel payload
             return self.__class__(state=self._state, guild=self.guild, data=payload)  # type: ignore
+
+    async def create_event(
+        self,
+        name: str,
+        privacy_level: PrivacyLevel,
+        status: GuildEventStatus,
+        scheduled_start_time: datetime.datetime,
+        scheduled_end_time: datetime.datetime | None = None,
+        description: str | None = None,
+        entity_metadata: GuildEventEntityMetadata | None = None
+    ) -> GuildEvent:
+        return await super().create_event(name, GuildEventEntityType.VOICE,
+                                          privacy_level, status,
+                                          scheduled_start_time,
+                                          scheduled_end_time, description,
+                                          self.id, entity_metadata)
 
 
 class StageChannel(VocalGuildChannel):
@@ -1309,6 +1343,23 @@ class StageChannel(VocalGuildChannel):
         if payload is not None:
             # the payload will always be the proper channel payload
             return self.__class__(state=self._state, guild=self.guild, data=payload)  # type: ignore
+
+    async def create_event(
+        self,
+        name: str,
+        privacy_level: PrivacyLevel,
+        status: GuildEventStatus,
+        scheduled_start_time: datetime.datetime,
+        scheduled_end_time: datetime.datetime | None = None,
+        description: str | None = None,
+        entity_metadata: GuildEventEntityMetadata | None = None
+    ) -> GuildEvent:
+        return await super().create_event(name,
+                                          GuildEventEntityType.STAGE_INSTANCE,
+                                          privacy_level, status,
+                                          scheduled_start_time,
+                                          scheduled_end_time, description,
+                                          self.id, entity_metadata)
 
 
 class CategoryChannel(discord.abc.GuildChannel, Hashable):
