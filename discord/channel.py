@@ -44,9 +44,9 @@ from typing import (
 import datetime
 
 import discord.abc
-from .guild_event import GuildEvent, GuildEventEntityMetadata, GuildEventEntityType, GuildEventStatus, PrivacyLevel
+from .guild_event import GuildEvent
 from .permissions import PermissionOverwrite, Permissions
-from .enums import ChannelType, StagePrivacyLevel, try_enum, VoiceRegion, VideoQualityMode
+from .enums import ChannelType, GuildEventPrivacyLevel, StagePrivacyLevel, try_enum, VoiceRegion, VideoQualityMode, GuildEventEntityType, GuildEventStatus
 from .mixins import Hashable
 from .object import Object
 from . import utils
@@ -880,23 +880,20 @@ class VocalGuildChannel(discord.abc.Connectable, discord.abc.GuildChannel, Hasha
         self,
         name: str,
         entity_type: GuildEventEntityType,
-        privacy_level: PrivacyLevel,
-        status: GuildEventStatus,
         scheduled_start_time: datetime.datetime,
         scheduled_end_time: datetime.datetime | None = None,
         description: str | None = None,
-        entity_metadata: GuildEventEntityMetadata | None = None
+        privacy_level: GuildEventPrivacyLevel = GuildEventPrivacyLevel.
+        guild_only
     ) -> GuildEvent:
         return await self.guild.create_event(
             name,
             entity_type,
-            privacy_level,
-            status,
             scheduled_start_time,
             scheduled_end_time=scheduled_end_time,
             description=description,
             channel_id=self.id,
-            entity_metadata=entity_metadata)
+            privacy_level=privacy_level)
 
 
 
@@ -1064,21 +1061,18 @@ class VoiceChannel(VocalGuildChannel):
     async def create_event(
         self,
         name: str,
-        privacy_level: PrivacyLevel,
-        status: GuildEventStatus,
         scheduled_start_time: datetime.datetime,
         scheduled_end_time: datetime.datetime | None = None,
         description: str | None = None,
-        entity_metadata: GuildEventEntityMetadata | None = None
+        privacy_level: GuildEventPrivacyLevel = GuildEventPrivacyLevel.
+        guild_only
     ) -> GuildEvent:
         return await super().create_event(name,
-                                          GuildEventEntityType.VOICE,
-                                          privacy_level,
-                                          status,
+                                          GuildEventEntityType.voice,
                                           scheduled_start_time,
                                           scheduled_end_time=scheduled_end_time,
                                           description=description,
-                                          entity_metadata=entity_metadata)
+                                          privacy_level=privacy_level)
 
 
 class StageChannel(VocalGuildChannel):
@@ -1356,21 +1350,18 @@ class StageChannel(VocalGuildChannel):
     async def create_event(
         self,
         name: str,
-        privacy_level: PrivacyLevel,
-        status: GuildEventStatus,
         scheduled_start_time: datetime.datetime,
         scheduled_end_time: datetime.datetime | None = None,
         description: str | None = None,
-        entity_metadata: GuildEventEntityMetadata | None = None
+        privacy_level: GuildEventPrivacyLevel = GuildEventPrivacyLevel.
+        guild_only
     ) -> GuildEvent:
         return await super().create_event(name,
-                                          GuildEventEntityType.STAGE_INSTANCE,
-                                          privacy_level,
-                                          status,
+                                          GuildEventEntityType.stage_instance,
                                           scheduled_start_time,
                                           scheduled_end_time=scheduled_end_time,
                                           description=description,
-                                          entity_metadata=entity_metadata)
+                                          privacy_level=privacy_level)
 
 
 class CategoryChannel(discord.abc.GuildChannel, Hashable):

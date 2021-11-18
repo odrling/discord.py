@@ -2,16 +2,16 @@ from __future__ import annotations
 
 from typing import Literal, Optional, TypedDict
 
-from .channel import PrivacyLevel
+from .member import Member
 from .snowflake import Snowflake, SnowflakeList
 from .user import User
 
+GuildEventPrivacyLevel = Literal[2]
 GuildEventStatus = Literal[1, 2, 3, 4]
-GuildEventEntityType = Literal[0, 1, 2, 3]
+GuildEventEntityType = Literal[1, 2, 3]
 
 
 class GuildEventEntityMetadata(TypedDict, total=False):
-    speaker_ids: SnowflakeList
     location: str
 
 
@@ -19,12 +19,12 @@ class GuildEvent(TypedDict, total=False):
     id: Snowflake
     guild_id: Snowflake
     channel_id: Optional[Snowflake]
-    creator_id: Snowflake
+    creator_id: Optional[Snowflake]
     name: str
     description: str
     scheduled_start_time: str
     scheduled_end_time: Optional[str]
-    privacy_level: PrivacyLevel
+    privacy_level: GuildEventPrivacyLevel
     status: GuildEventStatus
     entity_type: GuildEventEntityType
     entity_id: Optional[Snowflake]
@@ -33,5 +33,7 @@ class GuildEvent(TypedDict, total=False):
     user_count: int
 
 
-class GuildEventUsers(TypedDict):
-    users: list[User]
+class GuildEventUser(TypedDict):
+    guild_scheduled_event_id: Snowflake
+    user: User
+    member: Member

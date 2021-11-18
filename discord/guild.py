@@ -45,7 +45,7 @@ from typing import (
 
 from . import utils, abc
 from .role import Role
-from .guild_event import GuildEvent, GuildEventEntityMetadata, GuildEventEntityType, GuildEventStatus, PrivacyLevel
+from .guild_event import GuildEvent
 from .member import Member, VoiceState
 from .emoji import Emoji
 from .errors import InvalidData
@@ -65,6 +65,9 @@ from .enums import (
     ContentFilter,
     NotificationLevel,
     NSFWLevel,
+    GuildEventPrivacyLevel,
+    GuildEventEntityType,
+    GuildEventStatus,
 )
 from .mixins import Hashable
 from .user import User
@@ -2945,31 +2948,36 @@ class Guild(Hashable):
         channel_id = channel.id if channel else None
         await ws.voice_state(self.id, channel_id, self_mute, self_deaf)
 
-    async def fetch_all_events(self, with_user_count: bool = False) -> list[GuildEvent]:
+    async def fetch_events(self,
+                           with_user_count: bool = False) -> list[GuildEvent]:
         """
         Returns a list of guild scheduled event objects for the given guild.
         """
-        result = await self._state.http.get_all_guild_events(self.id, with_user_count=with_user_count)
+        result = await self._state.http.get_all_guild_events(
+            self.id, with_user_count=with_user_count)
         return [GuildEvent(state=self._state, data=data) for data in result]
 
-    async def fetch_event(self, event_id: int) -> GuildEvent:
+    async def fetch_event(self,
+                          event_id: int,
+                          with_user_count: bool = False) -> GuildEvent:
         """
         Returns a list of guild scheduled event objects for the given guild.
         """
-        result = await self._state.http.get_guild_event(self.id, event_id)
+        result = await self._state.http.get_guild_event(
+            self.id, event_id, with_user_count=with_user_count)
         return GuildEvent(state=self._state, data=result)
 
     async def create_event(
         self,
         name: str,
         entity_type: GuildEventEntityType,
-        privacy_level: PrivacyLevel,
-        status: GuildEventStatus,
         scheduled_start_time: datetime.datetime,
         scheduled_end_time: datetime.datetime | None = None,
         description: str | None = None,
         channel_id: int | None = None,
-        entity_metadata: GuildEventEntityMetadata | None = None
+        location: str | None = None,
+        privacy_level: GuildEventPrivacyLevel = GuildEventPrivacyLevel.
+        guild_only
     ) -> GuildEvent:
         """
         Create a guild scheduled event in the guild.
@@ -2978,8 +2986,8 @@ class Guild(Hashable):
         data = {
             'name': name,
             'entity_type': entity_type.value,
+            'channel_id': channel_id,
             'privacy_level': privacy_level.value,
-            'status': status.value,
             'scheduled_start_time': scheduled_start_time.isoformat(),
         }
 
@@ -2987,10 +2995,26 @@ class Guild(Hashable):
             data['scheduled_end_time'] = scheduled_end_time.isoformat()
         if description is not None:
             data['description'] = description
-        if channel_id is not None:
-            data['channel_id'] = channel_id
-        if entity_metadata is not None:
-            data['entity_metadata'] = asdict(entity_metadata)
+        if location is not None:
+            data['entity_metadata'] = {'location': location}
 
         result = await self._state.http.create_guild_event(self.id, data)
         return GuildEvent(state=self._state, data=result)
+
+    async def create_external_event(
+        self,
+        name: str,
+        scheduled_start_time: datetime.datetime,
+        scheduled_end_time: datetime.datetime,
+        location: str,
+        description: str | None = None,
+        privacy_level: GuildEventPrivacyLevel = GuildEventPrivacyLevel.
+        guild_only
+    ) -> GuildEvent:
+        return await self.create_event(name,
+                                       GuildEventEntityType.external,
+                                       scheduled_start_time,
+                                       scheduled_end_time=scheduled_end_time,
+                                       description=description,
+                                       location=location,
+                                       privacy_level=privacy_level)
