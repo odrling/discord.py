@@ -33,7 +33,7 @@ class GuildEvent(TypedDict, total=False):
     user_count: int
 
 
-class GuildEventUser(TypedDict):
+class GuildEventUser(TypedDict, total=False):
     guild_scheduled_event_id: Snowflake
     user: User
     member: Member

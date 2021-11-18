@@ -1948,11 +1948,19 @@ class HTTPClient:
             guild_id: Snowflake,
             event_id: Snowflake,
             limit: int = 100,
-            with_member: bool = False) -> Response[guild_event.GuildEventUser]:
+            with_member: bool = False,
+            before: Snowflake | None = None,
+            after: Snowflake | None = None) -> Response[guild_event.GuildEventUser]:
         params: dict[str, Any] = {
             'limit': limit,
-            'with_member': int(with_member)
+            'with_member': int(with_member),
         }
+
+        if before is not None:
+            params['before'] = before
+        if after is not None:
+            params['after'] = after
+
         r = Route('GET',
                   '/guilds/{guild_id}/scheduled-events/{event_id}/users',
                   guild_id=guild_id,

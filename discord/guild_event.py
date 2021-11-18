@@ -10,6 +10,8 @@ from .member import Member
 from .user import User
 
 if TYPE_CHECKING:
+    from .channel import VocalGuildChannel
+    from .guild import Guild
     from .state import ConnectionState
     from .types.guild_event import GuildEvent as GuildEventPayload
     from .types.guild_event import \
@@ -65,6 +67,14 @@ class GuildEvent:
             data = {}
         self.location: str | None = data.get('location')
 
+    @property
+    def guild(self) -> Guild | None:
+        return self._state._get_guild(self.guild_id)
+
+    @property
+    def channel(self) -> VocalGuildChannel | None:
+        return self._state.get_channel(self.channel_id)
+
     async def edit(self,
                    name: str = ...,
                    entity_type: GuildEventEntityType = ...,
@@ -78,6 +88,7 @@ class GuildEvent:
         """
         Modify a guild scheduled event.
         Returns the modified guild scheduled event object on success.
+        To start or end an event, use this endpoint to modify the event's status field.
         """
         data: dict[str, Any] = {}
 
@@ -112,30 +123,38 @@ class GuildEvent:
 
     async def get_users(self,
                         limit: int = 100,
-                        with_member: bool = False) -> list[User | Member]:
+                        with_member: bool = False,
+                        before: int = None,
+                        after: int = None) -> list[User | Member]:
         """
-        Get a list of users RSVP'd to the guild scheduled event.
-        Returns a list of user objects on success with an optional guild_member
-        property for each user if with_member query parameter is passed in.
+        Get a list of guild scheduled event users subscribed to a guild scheduled event.
+        Returns a list of guild scheduled event user objects on success.
+        Guild member data, if it exists, is included if the with_member query parameter is set.
         """
         result = await self._state.http.get_guild_event_users(
-            self.guild_id, self.id, limit=limit, with_member=with_member)
+            self.guild_id,
+            self.id,
+            limit=limit,
+            with_member=with_member,
+            before=before,
+            after=after)
         users = []
         for user in result:
             if (member_data := user.get('member')) is not None:
+                member_data['user'] = user['user']
                 guild = self._state._get_guild(self.guild_id)
-                users.append(data=member_data, guild=guild, state=self._state)
+                users.append(
+                    Member(data=member_data, guild=guild, state=self._state))
             else:
-                users.append(state=self._state, data=user['user'])
+                users.append(User(state=self._state, data=user['user']))
+        return users
 
     async def create_link(self, **kwargs) -> str:
         """
         Guild event invite link
         """
-        if self.channel_id is not None:
-            channel = self._state.get_channel(self.channel_id)
-            if channel is None:
-                channel = await self._state.http.get_channel(self.channel_id)
+        if self.channel is not None:
+            channel = self.channel
         else:
             guild = self._state._get_guild(self.guild_id)
             if guild.system_channel is not None:

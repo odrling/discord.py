@@ -44,9 +44,8 @@ from typing import (
 import datetime
 
 import discord.abc
-from .guild_event import GuildEvent
 from .permissions import PermissionOverwrite, Permissions
-from .enums import ChannelType, GuildEventPrivacyLevel, StagePrivacyLevel, try_enum, VoiceRegion, VideoQualityMode, GuildEventEntityType, GuildEventStatus
+from .enums import ChannelType, GuildEventPrivacyLevel, StagePrivacyLevel, try_enum, VoiceRegion, VideoQualityMode, GuildEventEntityType
 from .mixins import Hashable
 from .object import Object
 from . import utils
@@ -78,6 +77,7 @@ if TYPE_CHECKING:
     from .state import ConnectionState
     from .user import ClientUser, User, BaseUser
     from .guild import Guild, GuildChannel as GuildChannelType
+    from .guild_event import GuildEvent
     from .types.channel import (
         TextChannel as TextChannelPayload,
         VoiceChannel as VoiceChannelPayload,

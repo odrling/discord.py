@@ -2961,7 +2961,8 @@ class Guild(Hashable):
                           event_id: int,
                           with_user_count: bool = False) -> GuildEvent:
         """
-        Returns a list of guild scheduled event objects for the given guild.
+        Get a guild scheduled event.
+        Returns a guild scheduled event object on success.
         """
         result = await self._state.http.get_guild_event(
             self.id, event_id, with_user_count=with_user_count)
@@ -2986,7 +2987,6 @@ class Guild(Hashable):
         data = {
             'name': name,
             'entity_type': entity_type.value,
-            'channel_id': channel_id,
             'privacy_level': privacy_level.value,
             'scheduled_start_time': scheduled_start_time.isoformat(),
         }
@@ -2995,6 +2995,8 @@ class Guild(Hashable):
             data['scheduled_end_time'] = scheduled_end_time.isoformat()
         if description is not None:
             data['description'] = description
+        if channel_id is not None:
+            data['channel_id'] = channel_id
         if location is not None:
             data['entity_metadata'] = {'location': location}
 
