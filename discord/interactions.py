@@ -417,8 +417,6 @@ class InteractionResponse:
             defer_type = InteractionResponseType.deferred_channel_message.value
             if ephemeral:
                 data = {'flags': 64}
-        elif parent.type is InteractionType.application_command_autocomplete:
-            defer_type = InteractionResponseType.application_command_autocomplete_result.value
 
         if defer_type:
             adapter = async_context.get()
@@ -632,6 +630,24 @@ class InteractionResponse:
             state.store_view(view, message_id)
 
         self._responded = True
+
+    async def send_choices(self, choices):
+        if self._responded:
+            raise InteractionResponded(self._parent)
+
+        parent = self._parent
+        if parent.type is InteractionType.application_command_autocomplete:
+            adapter = async_context.get()
+            await adapter.create_interaction_response(
+                parent.id,
+                parent.token,
+                session=parent._session,
+                type=InteractionResponseType.
+                application_command_autocomplete_result.value,
+                data=choices
+            )
+            self._responded = True
+
 
 
 class _InteractionMessageState:
