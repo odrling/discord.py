@@ -417,6 +417,8 @@ class InteractionResponse:
             defer_type = InteractionResponseType.deferred_channel_message.value
             if ephemeral:
                 data = {'flags': 64}
+        elif parent.type is InteractionType.application_command_autocomplete:
+            defer_type = InteractionResponseType.application_command_autocomplete_result.value
 
         if defer_type:
             adapter = async_context.get()
