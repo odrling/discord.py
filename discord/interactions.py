@@ -644,7 +644,7 @@ class InteractionResponse:
                 session=parent._session,
                 type=InteractionResponseType.
                 application_command_autocomplete_result.value,
-                data=choices
+                data={'choices': choices}
             )
             self._responded = True
 
