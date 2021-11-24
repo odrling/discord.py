@@ -75,6 +75,10 @@ class GuildEvent:
     def channel(self) -> VocalGuildChannel | None:
         return self._state.get_channel(self.channel_id)
 
+    @property
+    def url(self) -> str:
+        return f"https://discord.com/events/{self.guild_id}/{self.id}"
+
     async def edit(self,
                    name: str = ...,
                    entity_type: GuildEventEntityType = ...,
