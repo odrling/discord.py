@@ -1032,6 +1032,14 @@ class ConnectionState:
         guild.stickers = tuple(map(lambda d: self.store_sticker(guild, d), data['stickers']))  # type: ignore
         self.dispatch('guild_stickers_update', guild, before_stickers, guild.stickers)
 
+    # def parse_interaction_create(self, data):
+    #     interaction = Interaction(data=data,
+    #                               state=self)
+    #     if interaction.guild is None:
+    #         _log.debug('INTERACTION_CREATE referencing an unknown guild ID: %s. Discarding.', data['guild_id'])
+    #         return
+    #     self.dispatch('interaction_create', interaction)
+
     def _get_create_guild(self, data):
         if data.get('unavailable') is False:
             # GUILD_CREATE with unavailable in the response

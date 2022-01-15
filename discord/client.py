@@ -40,7 +40,7 @@ from .widget import Widget
 from .guild import Guild
 from .emoji import Emoji
 from .channel import _threaded_channel_factory, PartialMessageable
-from .enums import ChannelType
+from .enums import ChannelType, InteractionType
 from .mentions import AllowedMentions
 from .errors import *
 from .enums import Status, VoiceRegion
@@ -68,6 +68,10 @@ if TYPE_CHECKING:
     from .message import Message
     from .member import Member
     from .voice_client import VoiceProtocol
+    from .interactions import Interaction
+
+import discord
+
 
 __all__ = (
     'Client',
@@ -402,6 +406,33 @@ class Client:
         else:
             self._schedule_event(coro, method, *args, **kwargs)
 
+    def _get_all_application_commands(self):
+        """Returns a dictionary with every :class:`discord.ext.commandes.ApplicationCommands` the client can use.
+
+        This is equivalent to: ::
+
+            for cog_name, cog in self.cogs.items():
+                cog_application_commands = cog.get_application_commands()
+                for cog_command in cog_application_commands:
+                    if cog_command.guild_id not in defined_application_commands:
+                        defined_application_commands[cog_command.guild_id] = {}
+                    defined_application_commands[cog_command.guild_id][cog_command.name] = cog_command
+
+        Yields
+        ------
+        :class:`.Member`
+            A member the client can see.
+        """
+        client_application_commands = {}
+        for cog_name, cog in self.cogs.items():
+            cog_application_commands = cog.get_application_commands()
+            for cog_command in cog_application_commands:
+                cmd_guild_id = int(cog_command.guild_id) if cog_command.guild_id is not None else cog_command.guild_id
+                if cmd_guild_id not in client_application_commands:
+                    client_application_commands[cmd_guild_id] = {}
+                client_application_commands[cmd_guild_id][cog_command.name] = cog_command
+        return client_application_commands
+
     async def on_error(self, event_method: str, *args: Any, **kwargs: Any) -> None:
         """|coro|
 
@@ -413,6 +444,114 @@ class Client:
         """
         print(f'Ignoring exception in {event_method}', file=sys.stderr)
         traceback.print_exc()
+
+    async def on_ready(self):
+        # Retrieve cogs' application commands
+        defined_application_commands = self._get_all_application_commands()
+
+        # Register application commands
+        application_info = await self.application_info()
+
+        # Ici on récupère les commandes existantes
+        application_commands = {}
+        global_commands = await self.fetch_global_commands(application_info.id)
+        if global_commands is not None and len(global_commands) > 0:
+            application_commands[None] = global_commands
+        for guild in self.guilds:
+            guild_commands = await self.fetch_guild_commands(application_info.id, guild.id)
+            if guild_commands is not None and len(guild_commands) > 0:
+                application_commands[guild.id] = guild_commands
+
+        commands_to_delete = {}
+        commands_to_update = {}
+
+        # On vient comparer les commandes récupérées pour savoir quoi mettre à jour
+        for guild_id in application_commands:
+            if guild_id not in defined_application_commands:
+                commands_to_delete[guild_id] = application_commands[guild_id]
+            else:
+                for command_name, command in application_commands[guild_id].items():
+                    if command_name not in defined_application_commands[guild_id]:
+                        if guild_id not in commands_to_delete:
+                            commands_to_delete[guild_id] = []
+                        commands_to_delete[guild_id].append(command)
+                    elif command != defined_application_commands[guild_id][command_name]:
+                        if guild_id not in commands_to_update:
+                            commands_to_update[guild_id] = []
+                        defined_application_commands[guild_id][command_name].id = command.id
+                        commands_to_update[guild_id].append(defined_application_commands[guild_id][command_name])
+                    else:
+                        defined_application_commands[guild_id][command_name].id = command.id
+                        defined_application_commands[guild_id][command_name].version = command.version
+
+        # On vient ensuite voir les commandes à ajouter
+        commands_to_add = {}
+        for guild_id in defined_application_commands:
+            if guild_id not in application_commands:
+                commands_to_add[guild_id] = defined_application_commands[guild_id]
+            else:
+                for command_name, command in defined_application_commands[guild_id].items():
+                    if command_name not in application_commands[guild_id]:
+                        if guild_id not in commands_to_add:
+                            commands_to_add[guild_id] = {}
+                        commands_to_add[guild_id][command_name] = command
+
+        # On supprime les commandes au niveau guildes
+        for guild_id, commands in commands_to_delete.items():
+            for command_name, command in commands.items():
+                if guild_id is None:
+                    await self.delete_global_command(application_id=application_info.id,
+                                                     command=command)
+                else:
+                    await self.delete_guild_command(application_id=application_info.id,
+                                                    guild_id=guild_id,
+                                                    command=command)
+
+        # On modifie les commandes à modifier
+        for guild_id, commands in commands_to_update.items():
+            for command in commands:
+                if guild_id is None:
+                    await self.update_global_command(application_id=application_info.id,
+                                                     command=command)
+                else:
+                    await self.update_guild_command(application_id=application_info.id,
+                                                    guild_id=guild_id,
+                                                    command=command)
+
+        # On vient ajouter les nouvelles commandes
+        for guild_id, commands in commands_to_add.items():
+            for command_name, command in commands.items():
+                if guild_id is None:
+                    await self.add_global_command(application_id=application_info.id,
+                                                  command=command)
+                else:
+                    await self.add_guild_command(application_id=application_info.id,
+                                                 guild_id=guild_id,
+                                                 command=command)
+
+    async def on_interaction(self, interaction: 'Interaction', *args, **kwargs):
+        """|coro|
+
+        The default handler provided for the interaction creation.
+
+        By default, this will execute the callback method for the
+        application command executed.
+        """
+        if interaction.type == InteractionType.application_command:
+            application_command_name = interaction.data["name"]
+            commands = self._get_all_application_commands()
+            # We check in the guild commands
+            if interaction.guild.id in commands and application_command_name in commands[interaction.guild.id]:
+                command = commands[interaction.guild.id][application_command_name]
+            elif application_command_name in commands[None]:  # We check in the global commands
+                command = commands[None][application_command_name]
+            if command is not None:
+                context = discord.ext.commands.context.InteractionContext(self, interaction, command)
+                _log.debug(f"Invoking application command \"{application_command_name}\" callback's")
+                await command.callback(command.cog, context, **command.generate_options_value(interaction))
+            else:
+                _log.warning(f"No application command named \"{application_command_name}\" has been found")
+
 
     # hooks
 
@@ -1640,3 +1779,63 @@ class Client:
         .. versionadded:: 2.0
         """
         return self._connection.persistent_views
+
+    #  COMMANDS FUNCTION
+
+    async def fetch_global_commands(self, application_id: int):
+        data = await self.http.retrieve_global_commands(application_id=application_id)
+        application_commands = {}
+        for element in data:
+            application_command = discord.ext.commands.commands.ApplicationCommand.from_payload(element)
+            application_commands[application_command.name] = application_command
+        return application_commands
+
+    async def fetch_guild_commands(self, application_id: int, guild_id: int):
+        data = await self.http.retrieve_guild_commands(application_id=application_id,
+                                                       guild_id=guild_id)
+        application_commands = {}
+        for element in data:
+            application_command = discord.ext.commands.commands.ApplicationCommand.from_payload(element)
+            application_commands[application_command.name] = application_command
+        return application_commands
+
+    async def delete_global_command(self, application_id: int, command):
+        result = await self.http.delete_global_command(application_id=application_id,
+                                                       command_id=command.id)
+        return result
+
+    async def delete_guild_command(self, application_id: int, guild_id: int, command):
+        result = await self.http.delete_guild_command(application_id=application_id,
+                                                      guild_id=guild_id,
+                                                      command_id=command.id)
+        return result
+
+    async def update_global_command(self, application_id: int, command):
+        result = await self.http.update_global_command(application_id=application_id,
+                                                       command=command)
+        command.id = result["id"]
+        command.version = result["version"]
+        return result
+
+    async def update_guild_command(self, application_id: int, guild_id: int, command):
+        result = await self.http.update_guild_command(application_id=application_id,
+                                                      guild_id=guild_id,
+                                                      command=command)
+        command.id = result["id"]
+        command.version = result["version"]
+        return result
+
+    async def add_global_command(self, application_id: int, command):
+        result = await self.http.add_global_command(application_id=application_id,
+                                                    command=command)
+        command.id = result["id"]
+        command.version = result["version"]
+        return result
+
+    async def add_guild_command(self, application_id: int, guild_id: int, command):
+        result = await self.http.add_guild_command(application_id=application_id,
+                                                   guild_id=guild_id,
+                                                   command=command)
+        command.id = result["id"]
+        command.version = result["version"]
+        return result

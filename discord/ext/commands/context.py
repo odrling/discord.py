@@ -23,14 +23,18 @@ DEALINGS IN THE SOFTWARE.
 """
 from __future__ import annotations
 
+import asyncio
 import inspect
 import re
+import typing
 
 from typing import Any, Dict, Generic, List, Optional, TYPE_CHECKING, TypeVar, Union
 
 import discord.abc
 import discord.utils
-
+from discord import Webhook, WebhookMessage
+from discord.enums import InteractionType
+from discord.interactions import InteractionMessage
 from discord.message import Message
 
 if TYPE_CHECKING:
@@ -51,6 +55,7 @@ if TYPE_CHECKING:
 
 __all__ = (
     'Context',
+    'InteractionContext'
 )
 
 MISSING: Any = discord.utils.MISSING
@@ -398,3 +403,89 @@ class Context(discord.abc.Messageable, Generic[BotT]):
     @discord.utils.copy_doc(Message.reply)
     async def reply(self, content: Optional[str] = None, **kwargs: Any) -> Message:
         return await self.message.reply(content, **kwargs)
+
+
+class InteractionContext(discord.abc.Messageable):
+
+    def __init__(self,
+                 bot: discord.Bot,
+                 interaction: discord.Interaction,
+                 command: discord.ext.commands.ApplicationCommand):
+        self.bot = bot
+        self._message: typing.Optional[discord.inteInteractionMessage] = None
+        self.author = interaction.user
+        self.interaction = interaction
+        self.channel = interaction.channel
+        self.guild = interaction.guild
+        self.command = command
+        self._sending = asyncio.Lock()
+        if interaction.type != InteractionType.application_command_autocomplete:
+            asyncio.create_task(self.send_initial_message())
+
+    async def _get_channel(self) -> discord.abc.Messageable:
+        return self.channel
+
+    async def send_initial_message(self):
+        try:
+            await asyncio.sleep(1)
+            await self.defer()
+        except Exception as error:
+            self.bot.dispatch('command_error', self, error)
+
+    async def defer(self, ephemeral: bool | None = None):
+        if ephemeral is None:
+            ephemeral = self.command.ephemeral
+
+        async with self._sending:
+            if self._message is None:
+                await self.interaction.response.defer(ephemeral=ephemeral)
+                self._message = await self.interaction.original_message()
+
+        return self._message
+
+    @property
+    def webhook(self) -> Webhook:
+        return self.interaction.followup
+
+    @property
+    def message(self) -> InteractionMessage:
+        if self._message is None:
+            raise RuntimeError("You must send your message before you can access it")
+
+        return self._message
+
+    async def reply(self, *args, **kwargs):
+        return await self.send(*args, **kwargs)
+
+    async def send(self,
+                   content: Optional[str] = None,
+                   **kwargs) -> InteractionMessage | WebhookMessage:
+        if content is not None:
+            kwargs['content'] = content
+
+        async with self._sending:
+            if self.interaction.response._responded:
+                send = self.webhook.send
+            else:
+                send = self.interaction.response.send_message
+                kwargs.setdefault('ephemeral', self.command.ephemeral)
+
+            signature = inspect.signature(send)
+            to_remove = [key for key in kwargs
+                         if key not in signature.parameters.keys()]
+            for key in to_remove:
+                del kwargs[key]
+
+            message = await send(**kwargs)
+            if message is None:
+                self._message = await self.interaction.original_message()
+                return self._message
+
+            return message
+
+    async def send_choices(self, choices):
+        async with self._sending:
+            await self.interaction.response.send_choices(choices)
+
+    def typing(self):
+        return self.channel.typing()

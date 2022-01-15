@@ -23,6 +23,8 @@ DEALINGS IN THE SOFTWARE.
 """
 
 from __future__ import annotations
+
+import typing
 from typing import Any, Callable, ClassVar, Dict, Iterator, List, Optional, Sequence, TYPE_CHECKING, Tuple
 from functools import partial
 from itertools import groupby
@@ -242,6 +244,18 @@ class View:
         if self.timeout:
             return time.monotonic() + self.timeout
         return None
+
+    def add_items(self, items: typing.List[Item]) -> None:
+        """Adds multiple items to the view
+
+        Parameters
+        -----------
+        items: :class:`typing.List[Item]`
+            The items to add to the view
+        """
+
+        for item in items:
+            self.add_item(item)
 
     def add_item(self, item: Item) -> None:
         """Adds an item to the view.

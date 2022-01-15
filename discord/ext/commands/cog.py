@@ -23,12 +23,15 @@ DEALINGS IN THE SOFTWARE.
 """
 from __future__ import annotations
 
+import copy
 import inspect
 import discord.utils
+import discord.ext.commands.commands as cmds
 
 from typing import Any, Callable, ClassVar, Dict, Generator, List, Optional, TYPE_CHECKING, Tuple, TypeVar, Type
 
 from ._types import _BaseCommand
+
 
 if TYPE_CHECKING:
     from .bot import BotBase
@@ -119,6 +122,7 @@ class CogMeta(type):
             description = inspect.cleandoc(attrs.get('__doc__', ''))
         attrs['__cog_description__'] = description
 
+        application_commands = {}
         commands = {}
         listeners = {}
         no_bot_cog = 'Commands or listeners must not start with cog_ or bot_ (in method {0.__name__}.{1})'
@@ -140,6 +144,8 @@ class CogMeta(type):
                     if elem.startswith(('cog_', 'bot_')):
                         raise TypeError(no_bot_cog.format(base, elem))
                     commands[elem] = value
+                elif isinstance(value, cmds.ApplicationCommand):
+                    application_commands[elem] = value
                 elif inspect.iscoroutinefunction(value):
                     try:
                         getattr(value, '__cog_listener__')
@@ -151,6 +157,7 @@ class CogMeta(type):
                         listeners[elem] = value
 
         new_cls.__cog_commands__ = list(commands.values()) # this will be copied in Cog.__new__
+        new_cls.__cog_application_commands__ = list(application_commands.values())
 
         listeners_as_list = []
         for listener in listeners.values():
@@ -204,6 +211,12 @@ class Cog(metaclass=CogMeta):
             for cmd in self.__cog_commands__
         }
 
+        self.__cog_application_commands__ = []
+        for application_command in cls.__cog_application_commands__:
+            application_command_copy = copy.copy(application_command)
+            application_command_copy.cog = self
+            self.__cog_application_commands__.append(application_command_copy)
+
         # Update the Command instances dynamically as well
         for command in self.__cog_commands__:
             setattr(self, command.callback.__name__, command)
@@ -231,6 +244,20 @@ class Cog(metaclass=CogMeta):
                 This does not include subcommands.
         """
         return [c for c in self.__cog_commands__ if c.parent is None]
+
+    def get_application_commands(self):
+        r"""
+                Returns
+                --------
+                List[:class:`.Command`]
+                    A :class:`list` of :class:`.ApplicationCommand`\s that are
+                    defined inside this cog.
+
+                    .. note::
+
+                        This does not include subcommands.
+                """
+        return [ac for ac in self.__cog_application_commands__]
 
     @property
     def qualified_name(self) -> str:

@@ -1180,6 +1180,7 @@ class HTTPClient:
 
         return self.request(Route('GET', '/guilds/{guild_id}/prune', guild_id=guild_id), params=params)
 
+
     def get_sticker(self, sticker_id: Snowflake) -> Response[sticker.Sticker]:
         return self.request(Route('GET', '/stickers/{sticker_id}', sticker_id=sticker_id))
 
@@ -1997,3 +1998,59 @@ class HTTPClient:
 
     def get_user(self, user_id: Snowflake) -> Response[user.User]:
         return self.request(Route('GET', '/users/{user_id}', user_id=user_id))
+
+    # Application commands
+
+    def retrieve_global_commands(self, application_id: int):
+        return self.request(Route('GET', '/applications/{application_id}/commands',
+                                  application_id=application_id))
+
+    def retrieve_guild_commands(self, application_id: int, guild_id: int):
+        return self.request(Route('GET', '/applications/{application_id}/guilds/{guild_id}/commands',
+                                  application_id=application_id, guild_id=guild_id))
+
+    def delete_global_command(self, application_id: int, command_id: int):
+        return self.request(Route('DELETE', '/applications/{application_id}/commands/{command_id}',
+                                  application_id=application_id, command_id=command_id))
+
+    def delete_guild_command(self, application_id: int, guild_id: int, command_id: int):
+        return self.request(Route('DELETE', '/applications/{application_id}/guilds/{guild_id}/commands/{command_id}',
+                                  application_id=application_id,
+                                  guild_id=guild_id,
+                                  command_id=command_id))
+
+    def update_global_command(self, application_id: int, command):
+        payload = {"name": command.name,
+                   "description": command.description,
+                   "default_permission": command.default_permission}
+        options = [option.__repr__() for option in command.options]
+        payload["options"] = options
+        return self.request(Route('PATCH', '/applications/{application_id}/commands/{command_id}',
+                                  application_id=application_id,
+                                  command_id=command.id),
+                            json=payload)
+
+    def update_guild_command(self, application_id: int, guild_id: int, command):
+        payload = {"name": command.name,
+                   "description": command.description,
+                   "default_permission": command.default_permission}
+        options = [option.__repr__() for option in command.options]
+        payload["options"] = options
+        return self.request(Route('PATCH', '/applications/{application_id}/guilds/{guild_id}/commands/{command_id}',
+                                  application_id=application_id,
+                                  guild_id=guild_id,
+                                  command_id=command.id),
+                            json=payload)
+
+    def add_global_command(self, application_id: int, command):
+        payload = command.__repr__()
+        return self.request(Route('POST', '/applications/{application_id}/commands',
+                                  application_id=application_id),
+                            json=payload)
+
+    def add_guild_command(self, application_id: int, guild_id: int, command):
+        payload = command.__repr__()
+        return self.request(Route('POST', '/applications/{application_id}/guilds/{guild_id}/commands',
+                                  application_id=application_id,
+                                  guild_id=guild_id),
+                            json=payload)
