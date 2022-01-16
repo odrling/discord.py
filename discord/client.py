@@ -29,6 +29,7 @@ import logging
 import signal
 import sys
 import traceback
+import typing
 from typing import Any, Callable, Coroutine, Dict, Generator, List, Optional, Sequence, TYPE_CHECKING, Tuple, TypeVar, Union
 
 import aiohttp
@@ -427,10 +428,20 @@ class Client:
         for cog_name, cog in self.cogs.items():
             cog_application_commands = cog.get_application_commands()
             for cog_command in cog_application_commands:
-                cmd_guild_id = int(cog_command.guild_id) if cog_command.guild_id is not None else cog_command.guild_id
-                if cmd_guild_id not in client_application_commands:
-                    client_application_commands[cmd_guild_id] = {}
-                client_application_commands[cmd_guild_id][cog_command.name] = cog_command
+                # cmd_guild_id = int(cog_command.guild_id) if cog_command.guild_id is not None else cog_command.guild_id
+                # if cmd_guild_id not in client_application_commands:
+                #     client_application_commands[cmd_guild_id] = {}
+                # client_application_commands[cmd_guild_id][cog_command.name] = cog_command
+                if not cog_command.is_global:
+                    if None not in client_application_commands:
+                        client_application_commands[None] = {}
+                    client_application_commands[None][cog_command.name] = cog_command
+                else:
+                    for guild in self.guilds:
+                        if guild.id not in client_application_commands:
+                            client_application_commands[guild.id] = {}
+                        cog_command.guild_id = str(guild.id)
+                        client_application_commands[guild.id][cog_command.name] = cog_command
         return client_application_commands
 
     async def on_error(self, event_method: str, *args: Any, **kwargs: Any) -> None:
@@ -498,7 +509,7 @@ class Client:
 
         # On supprime les commandes au niveau guildes
         for guild_id, commands in commands_to_delete.items():
-            for command_name, command in commands.items():
+            for command in commands:
                 if guild_id is None:
                     await self.delete_global_command(application_id=application_info.id,
                                                      command=command)

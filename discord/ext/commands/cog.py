@@ -25,6 +25,8 @@ from __future__ import annotations
 
 import copy
 import inspect
+import typing
+
 import discord.utils
 import discord.ext.commands.commands as cmds
 
@@ -180,6 +182,7 @@ def _cog_special_method(func: FuncT) -> FuncT:
     func.__cog_special_method__ = None
     return func
 
+
 class Cog(metaclass=CogMeta):
     """The base class that all cogs must inherit from.
 
@@ -245,7 +248,7 @@ class Cog(metaclass=CogMeta):
         """
         return [c for c in self.__cog_commands__ if c.parent is None]
 
-    def get_application_commands(self):
+    def get_application_commands(self) -> typing.List[cmds.ApplicationCommand]:
         r"""
                 Returns
                 --------

@@ -5,11 +5,10 @@ import inspect
 import typing
 
 from discord.enums import Enum
-from discord import User, Mentionable, Role, ChannelType, InvalidArgument, Interaction, Client
-from discord.abc import Messageable, GuildChannel
+from discord import User, Mentionable, Role, ChannelType, Interaction
+from discord.abc import GuildChannel
 
 from dataclasses import dataclass
-
 
 __all__ = ['ApplicationCommand',
            'ApplicationCommandField',
@@ -222,8 +221,8 @@ class ApplicationCommand:
                  default_permission: bool = True,
                  default_member_permissions: bool | None = None,
                  dm_permission: bool | None = None,
-                 ephemeral: bool = False,
-                 cog = None):
+                 is_global: bool = False,
+                 cog=None):
         self.callback: typing.Any | None = callback
         self.id: int | None = id
         if isinstance(type, int):
@@ -246,7 +245,7 @@ class ApplicationCommand:
         self.default_member_permissions: bool | None = default_member_permissions
         self.dm_permission: bool | None = dm_permission
         self.version: int = version
-        self.ephemeral = ephemeral
+        self.is_global = is_global
         self.cog = cog
 
     @classmethod
@@ -276,7 +275,7 @@ class ApplicationCommand:
                                   description=self.description,
                                   callback=self.callback,
                                   options=self.options,
-                                  ephemeral=self.ephemeral)
+                                  is_global=self.is_global)
 
     def __repr__(self):
         data = {
@@ -336,8 +335,14 @@ class ApplicationCommandField:
 
 def slash_command(name: str | None = None,
                   description: str | None = None,
-                  guild_id: str | None = None,
-                  ephemeral: bool = True):
+                  is_global: bool = False):
+    """
+    Create an Application Command for discord
+    :param name: The name of command
+    :param description: The description of the command
+    :param is_global: If set to True, the command will be deployed on every guild servers but won't be a global command
+    :return: An instance of the Application Command
+    """
     def slash_command_decorator(callback):
         if description:
             command_description = description
@@ -409,11 +414,8 @@ def slash_command(name: str | None = None,
                                      name=command_name,
                                      description=command_description,
                                      callback=callback,
-                                     guild_id=guild_id,
                                      options=options,
-                                     ephemeral=ephemeral)
-        if guild_id not in _pre_registration_commands:
-            _pre_registration_commands[guild_id] = []
-        _pre_registration_commands[guild_id].append(command)
+                                     is_global=is_global)
         return command
+
     return slash_command_decorator
