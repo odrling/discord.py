@@ -41,7 +41,18 @@ class ApplicationCommandType(Enum):
     MESSAGE = 3
 
 
+class ApplicationCommandPermissionType(Enum):
+    ROLE = 1
+    USER = 2
+
+
 # DATACLASSES
+
+@dataclass
+class ApplicationCommandPermission:
+    id: int
+    type: ApplicationCommandPermissionType
+    permission: bool
 
 
 @dataclass
@@ -222,6 +233,7 @@ class ApplicationCommand:
                  default_member_permissions: bool | None = None,
                  dm_permission: bool | None = None,
                  is_global: bool = False,
+                 ephemeral: bool = True,
                  cog=None):
         self.callback: typing.Any | None = callback
         self.id: int | None = id
@@ -246,6 +258,7 @@ class ApplicationCommand:
         self.dm_permission: bool | None = dm_permission
         self.version: int = version
         self.is_global = is_global
+        self.ephemeral = ephemeral
         self.cog = cog
 
     @classmethod
@@ -335,7 +348,8 @@ class ApplicationCommandField:
 
 def slash_command(name: str | None = None,
                   description: str | None = None,
-                  is_global: bool = False):
+                  is_global: bool = False,
+                  ephemeral: bool = True):
     """
     Create an Application Command for discord
     :param name: The name of command
@@ -415,7 +429,8 @@ def slash_command(name: str | None = None,
                                      description=command_description,
                                      callback=callback,
                                      options=options,
-                                     is_global=is_global)
+                                     is_global=is_global,
+                                     ephemeral=ephemeral)
         return command
 
     return slash_command_decorator

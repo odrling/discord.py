@@ -479,7 +479,7 @@ class Client:
         # On vient comparer les commandes récupérées pour savoir quoi mettre à jour
         for guild_id in application_commands:
             if guild_id not in defined_application_commands:
-                commands_to_delete[guild_id] = application_commands[guild_id]
+                commands_to_delete[guild_id] = application_commands[guild_id].values()
             else:
                 for command_name, command in application_commands[guild_id].items():
                     if command_name not in defined_application_commands[guild_id]:
