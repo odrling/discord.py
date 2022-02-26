@@ -59,6 +59,8 @@ from .stage_instance import StageInstance
 from .threads import Thread, ThreadMember
 from .sticker import GuildSticker
 
+import discord.guild_event
+
 if TYPE_CHECKING:
     from .abc import PrivateChannel
     from .message import MessageableChannel
@@ -67,7 +69,6 @@ if TYPE_CHECKING:
     from .voice_client import VoiceProtocol
     from .client import Client
     from .gateway import DiscordWebSocket
-
     from .types.activity import Activity as ActivityPayload
     from .types.channel import DMChannel as DMChannelPayload
     from .types.user import User as UserPayload
@@ -1222,7 +1223,54 @@ class ConnectionState:
         if guild is not None:
             self.dispatch('guild_integrations_update', guild)
         else:
-            _log.debug('GUILD_INTEGRATIONS_UPDATE referencing an unknown guild ID: %s. Discarding.', data['guild_id'])
+            _log.debug('GUILD_INTEGRATIONS_UPDATE referencing an unknown guild ID: %s. Discarding.',
+                       data['guild_id'])
+
+    def parse_guild_scheduled_event_create(self, data) -> None:
+        event = discord.guild_event.GuildEvent(state=self,
+                                               data=data)
+        if event.guild is not None:
+            self.dispatch('guild_scheduled_event_create', event)
+        else:
+            _log.debug('GUILD_SCHEDULED_EVENT_CREATE referencing an unknown guild ID: %s. Discarding.',
+                       data['guild_id'])
+
+    def parse_guild_scheduled_event_delete(self, data) -> None:
+        event = discord.guild_event.GuildEvent(state=self,
+                                               data=data)
+        if event.guild is not None:
+            self.dispatch('guild_scheduled_event_delete', event)
+        else:
+            _log.debug('GUILD_SCHEDULED_EVENT_DELETE referencing an unknown guild ID: %s. Discarding.',
+                       data['guild_id'])
+
+    def parse_guild_scheduled_event_update(self, data) -> None:
+
+        event = discord.guild_event.GuildEvent(state=self,
+                                               data=data)
+        if event.guild is not None:
+            self.dispatch('guild_scheduled_event_update', event)
+        else:
+            _log.debug('GUILD_SCHEDULED_EVENT_UPDATE referencing an unknown guild ID: %s. Discarding.',
+                       data['guild_id'])
+
+    def parse_guild_scheduled_event_user_add(self, data) -> None:
+        guild = self._get_guild(int(data['guild_id']))
+        if guild is not None:
+            member = guild.get_member(int(data['user_id']))
+            self.dispatch('guild_scheduled_event_user_add', guild, member, int(data['guild_scheduled_event_id']))
+        else:
+            _log.debug('GUILD_SCHEDULED_EVENT_USER_ADD referencing an unknown guild ID: %s. Discarding.',
+                       data['guild_id'])
+
+    def parse_guild_scheduled_event_user_remove(self, data) -> None:
+        guild = self._get_guild(int(data['guild_id']))
+        if guild is not None:
+            member = guild.get_member(int(data['user_id']))
+            self.dispatch('guild_scheduled_event_user_remove', guild, member, int(data['guild_scheduled_event_id']))
+        else:
+            _log.debug('GUILD_SCHEDULED_EVENT_USER_REMOVE referencing an unknown guild ID: %s. Discarding.',
+                       data['guild_id'])
 
     def parse_integration_create(self, data) -> None:
         guild_id = int(data.pop('guild_id'))

@@ -288,7 +288,8 @@ class ApplicationCommand:
                                   description=self.description,
                                   callback=self.callback,
                                   options=self.options,
-                                  is_global=self.is_global)
+                                  is_global=self.is_global,
+                                  ephemeral=self.ephemeral)
 
     def __repr__(self):
         data = {
@@ -355,6 +356,8 @@ def slash_command(name: str | None = None,
     :param name: The name of command
     :param description: The description of the command
     :param is_global: If set to True, the command will be deployed on every guild servers but won't be a global command
+    :param ephemeral: If set to True, the answer to the command will be only visible to the sender of the command.
+    If set to False, it will be visible to everyone.
     :return: An instance of the Application Command
     """
     def slash_command_decorator(callback):

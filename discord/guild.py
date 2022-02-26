@@ -2977,6 +2977,7 @@ class Guild(Hashable):
         description: str | None = None,
         channel_id: int | None = None,
         location: str | None = None,
+        image: str | None = None,
         privacy_level: GuildEventPrivacyLevel = GuildEventPrivacyLevel.
         guild_only
     ) -> GuildEvent:
@@ -2999,6 +3000,8 @@ class Guild(Hashable):
             data['channel_id'] = channel_id
         if location is not None:
             data['entity_metadata'] = {'location': location}
+        if image is not None:
+            data['image'] = image
 
         result = await self._state.http.create_guild_event(self.id, data)
         return GuildEvent(state=self._state, data=result)
@@ -3010,13 +3013,13 @@ class Guild(Hashable):
         scheduled_end_time: datetime.datetime,
         location: str,
         description: str | None = None,
-        privacy_level: GuildEventPrivacyLevel = GuildEventPrivacyLevel.
-        guild_only
-    ) -> GuildEvent:
+        privacy_level: GuildEventPrivacyLevel = GuildEventPrivacyLevel.guild_only,
+        image: str | None = None) -> GuildEvent:
         return await self.create_event(name,
                                        GuildEventEntityType.external,
                                        scheduled_start_time,
                                        scheduled_end_time=scheduled_end_time,
                                        description=description,
                                        location=location,
-                                       privacy_level=privacy_level)
+                                       privacy_level=privacy_level,
+                                       image=image)

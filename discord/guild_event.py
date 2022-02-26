@@ -59,6 +59,8 @@ class GuildEvent:
             state=self._state,
             data=data['creator']) if 'creator' in data else None
 
+        self.image: str | None = data['image'] if data['image'] is not None else None
+
         self.user_count: int | None = int(
             data['user_count']) if 'user_count' in data else None
 
@@ -88,6 +90,7 @@ class GuildEvent:
                    description: str | None = ...,
                    channel_id: int | None = ...,
                    location: str | None = ...,
+                   image: str | None = ...,
                    privacy_level: GuildEventPrivacyLevel = ...) -> 'GuildEvent':
         """
         Modify a guild scheduled event.
@@ -114,6 +117,8 @@ class GuildEvent:
             data['entity_metadata'] = {'location': location}
         if privacy_level != ...:
             data['privacy_level'] = privacy_level.value
+        if image != ...:
+            data['image'] = image
 
         result = await self._state.http.edit_guild_event(
             self.guild_id, self.id, data)
@@ -151,6 +156,17 @@ class GuildEvent:
                     Member(data=member_data, guild=guild, state=self._state))
             else:
                 users.append(User(state=self._state, data=user['user']))
+        return users
+
+    async def get_all_users(self,
+                            with_member: bool = False) -> list[User | Member]:
+        users: list[User | Member] = []
+        buffer_users = await self.get_users(with_member=with_member)
+        users.extend(buffer_users)
+        while len(buffer_users) == 100:
+            buffer_users: list[User | Member] = await self.get_users(with_member=with_member,
+                                                                     after=buffer_users[-1].id)
+            users.extend(buffer_users)
         return users
 
     async def create_link(self, **kwargs) -> str:

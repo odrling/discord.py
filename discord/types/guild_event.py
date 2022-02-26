@@ -31,6 +31,7 @@ class GuildEvent(TypedDict, total=False):
     entity_metadata: Optional[GuildEventEntityMetadata]
     creator: User
     user_count: int
+    image: str
 
 
 class GuildEventUser(TypedDict, total=False):
