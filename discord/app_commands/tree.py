@@ -44,7 +44,7 @@ from typing import (
     Union,
     overload,
 )
-from collections import ChainMap, Counter
+from collections import Counter
 
 
 from .namespace import Namespace, ResolveKey
@@ -81,9 +81,6 @@ __all__ = ('CommandTree',)
 ClientT = TypeVar('ClientT', bound='Client')
 
 _log = logging.getLogger(__name__)
-
-
-ALL_GUILDS = -1
 
 
 def _retrieve_guild_ids(
@@ -360,13 +357,12 @@ class CommandTree(Generic[ClientT]):
             # adding it into the mapping. This ensures atomicity.
             for guild_id in guild_ids:
                 commands = self._guild_commands.get(guild_id, {})
-                check_commands = ChainMap(commands, self._guild_commands.get(ALL_GUILDS, {}))
-                found = name in check_commands
+                found = name in commands
                 if found and not override:
                     raise CommandAlreadyRegistered(name, guild_id)
 
                 to_add = not (override and found)
-                if len(check_commands) + to_add > 100:
+                if len(commands) + to_add > 100:
                     raise CommandLimitReached(guild_id=guild_id, limit=100)
 
             # Actually add the command now that it has been verified to be okay.
@@ -451,9 +447,12 @@ class CommandTree(Generic[ClientT]):
             if guild is None:
                 return self._global_commands.pop(command, None)
             else:
-                commands = ChainMap(self._guild_commands.get(ALL_GUILDS, {}), self._guild_commands.get(guild.id, {}))
-
-                return commands.pop(command, None)
+                try:
+                    commands = self._guild_commands[guild.id]
+                except KeyError:
+                    return None
+                else:
+                    return commands.pop(command, None)
         elif type in (AppCommandType.user, AppCommandType.message):
             guild_id = None if guild is None else guild.id
             key = (command, guild_id, type.value)
@@ -480,7 +479,7 @@ class CommandTree(Generic[ClientT]):
                 self._global_commands.clear()
             else:
                 try:
-                    commands = ChainMap(self._guild_commands.get(ALL_GUILDS, {}), self._guild_commands.get(guild.id, {}))
+                    commands = self._guild_commands[guild.id]
                 except KeyError:
                     pass
                 else:
@@ -566,7 +565,7 @@ class CommandTree(Generic[ClientT]):
                 return self._global_commands.get(command)
             else:
                 try:
-                    commands = ChainMap(self._guild_commands.get(ALL_GUILDS, {}), self._guild_commands.get(guild.id, {}))
+                    commands = self._guild_commands[guild.id]
                 except KeyError:
                     return None
                 else:
@@ -646,7 +645,7 @@ class CommandTree(Generic[ClientT]):
                 return list(self._global_commands.values())
             else:
                 try:
-                    commands = ChainMap(self._guild_commands.get(ALL_GUILDS, {}), self._guild_commands.get(guild.id, {}))
+                    commands = self._guild_commands[guild.id]
                 except KeyError:
                     return []
                 else:
@@ -714,7 +713,7 @@ class CommandTree(Generic[ClientT]):
                         yield from cmd.walk_commands()
             else:
                 try:
-                    commands = ChainMap(self._guild_commands.get(ALL_GUILDS, {}), self._guild_commands.get(guild.id, {}))
+                    commands = self._guild_commands[guild.id]
                 except KeyError:
                     return
                 else:
@@ -737,12 +736,16 @@ class CommandTree(Generic[ClientT]):
             base.extend(cmd for ((_, g, _), cmd) in self._context_menus.items() if g is None)
             return base
         else:
-            commands = ChainMap(self._guild_commands.get(ALL_GUILDS, {}), self._guild_commands.get(guild.id, {}))
-
-            base: List[Union[Command[Any, ..., Any], Group, ContextMenu]] = list(commands.values())
-            guild_id = guild.id
-            base.extend(cmd for ((_, g, _), cmd) in self._context_menus.items() if g == guild_id)
-            return base
+            try:
+                commands = self._guild_commands[guild.id]
+            except KeyError:
+                guild_id = guild.id
+                return [cmd for ((_, g, _), cmd) in self._context_menus.items() if g == guild_id]
+            else:
+                base: List[Union[Command[Any, ..., Any], Group, ContextMenu]] = list(commands.values())
+                guild_id = guild.id
+                base.extend(cmd for ((_, g, _), cmd) in self._context_menus.items() if g == guild_id)
+                return base
 
     def _remove_with_module(self, name: str) -> None:
         remove: List[Any] = []
@@ -1108,13 +1111,14 @@ class CommandTree(Generic[ClientT]):
 
         command_guild_id = _get_as_snowflake(data, 'guild_id')
         if command_guild_id:
-            guild_commands = ChainMap(
-                self._guild_commands.get(ALL_GUILDS, {}), self._guild_commands.get(command_guild_id, {})
-            )
-
-            command = guild_commands.get(name)
-            if command is None and self.fallback_to_global:
-                command = self._global_commands.get(name)
+            try:
+                guild_commands = self._guild_commands[command_guild_id]
+            except KeyError:
+                command = None if not self.fallback_to_global else self._global_commands.get(name)
+            else:
+                command = guild_commands.get(name)
+                if command is None and self.fallback_to_global:
+                    command = self._global_commands.get(name)
         else:
             command = self._global_commands.get(name)
 
